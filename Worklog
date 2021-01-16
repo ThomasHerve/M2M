@@ -1,0 +1,28 @@
+12 janvier
+- Installation de Qemu sur mon debian
+- Mise en place du git
+- Installation avec les commandes suivantes:
+    - sudo apt-get install gcc-arm-none-eabi gdb-arm-none-eabi binutils-arm-none-eabi
+    - sudo apt-get install qemu-system-arm qemu-system-x86
+
+Qemu est un simulateur de machine, qui permet de choisir une distribution (intel, ARM, etc... ici on choisi ARM).
+Le makefile fourni permet de compiler un .elf qui tournera sur la distribution.
+
+
+Connection à GDB:
+    - On ouvre une session avec qemu qui permet d'interpreter le programme en .elf
+    - On ouvre une session gdb, qemu ouvre un port (1234) quand compiler avec l'option "debug" decrite dans le makefile
+    - On peut donc via gdb se connecter et avoir acces à toute la memoire ! (et ça c'est cool).
+    On utilise la commande "target remote localhost:1234" une fois dans gdb pour se connecter
+
+Le makefile:
+Ce dernier permet de compiler et d'executer notre projet. On constate qu'il y a deux mots clé en en tete importants:
+    - TOOLCHAIN : Ici "arm-none-eabi", c'est simplement un outils de compilation, comme gcc. Il permet de compiler specifiquement pour ARM
+    - QEMU: Ici "qemu-system-arm", c'est l'executable qemu, utilisant l'architecture ARM.
+On voit qu'il faut aussi choisir une machine, ici versatileab et versatilepb, ces dernieres sont les instances qemu que nous avons choisi d'utiliser,
+Celle ci en particulier pour leurs simplicité d'utilisation.
+
+On constate qu'on utilise un "linker script" durant le compilation. Ce dernier permet de pre-definir des valeurs à certaines adresses pour
+permettre une execution correct (comme donné un point d'entré convenable, sinon l'execution crasherais instantannement, definir la taille de la pile, etc...)
+
+
