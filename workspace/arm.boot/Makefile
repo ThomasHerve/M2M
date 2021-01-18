@@ -10,7 +10,7 @@ LDFLAGS= -T kernel.ld
 MACHINE=versatilepb
 MACHINE=versatileab
 
-MEMORY=1M
+MEMORY=32M
 
 # Notice that we link with our own linker script: test.ld
 all: startup.o main.o 

@@ -23,6 +23,11 @@ On voit qu'il faut aussi choisir une machine, ici versatileab et versatilepb, ce
 Celle ci en particulier pour leurs simplicité d'utilisation.
 
 On constate qu'on utilise un "linker script" durant le compilation. Ce dernier permet de pre-definir des valeurs à certaines adresses pour
-permettre une execution correct (comme donné un point d'entré convenable, sinon l'execution crasherais instantannement, definir la taille de la pile, etc...)
+permettre une execution correct (comme donner un point d'entré convenable, sinon l'execution crasherais instantannement, definir la taille de la pile, etc...)
 
+Lors du run, le code de notre kernel, à ce moment donné present sous la forme "kernel.elf" doit etre converti en .bin, c'est à dire en binaire lisible par qemu.
+Pour permettre le debug nous compilons (lors de la compilation en mode debug) avec l'option -gdb, et evidemment nous ouvrons un port pour permettre à gdb de se connecter.
 
+On remarque que le code n'utilise pas "printf", pour la simple raison que l'on n'utilise pas de librairie standard. Toute action doit donc être redevelopper,
+Comme écrire sur la sortie standard par exemple. Dans notre cas la processeur possede une fifo dans laquelle nous pouvons ecrire, le processeur l'utilise
+pour afficher les caracteres passés dedans.
