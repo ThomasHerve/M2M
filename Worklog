@@ -24,6 +24,7 @@ Celle ci en particulier pour leurs simplicité d'utilisation.
 
 On constate qu'on utilise un "linker script" durant le compilation. Ce dernier permet de pre-definir des valeurs à certaines adresses pour
 permettre une execution correct (comme donner un point d'entré convenable, sinon l'execution crasherais instantannement, definir la taille de la pile, etc...)
+Il permet aussi de placer startup.s en haut pour qu'il soit executer en premier, ce dernier permet d'initialiser notre code dans main.
 
 Lors du run, le code de notre kernel, à ce moment donné present sous la forme "kernel.elf" doit etre converti en .bin, c'est à dire en binaire lisible par qemu.
 Pour permettre le debug nous compilons (lors de la compilation en mode debug) avec l'option -gdb, et evidemment nous ouvrons un port pour permettre à gdb de se connecter.
@@ -31,3 +32,37 @@ Pour permettre le debug nous compilons (lors de la compilation en mode debug) av
 On remarque que le code n'utilise pas "printf", pour la simple raison que l'on n'utilise pas de librairie standard. Toute action doit donc être redevelopper,
 Comme écrire sur la sortie standard par exemple. Dans notre cas la processeur possede une fifo dans laquelle nous pouvons ecrire, le processeur l'utilise
 pour afficher les caracteres passés dedans.
+
+On possede un fichier "kernel.elf". Ce dernier est un fichier qui permet d'obtenir un binaire. Ce dernier est unique, mais tout son interet est qu'il
+condense tout les .o, en definissant les espaces memoires et les liens. En donnant l'option -gdb, cela permet d'utiliser le .elf
+pour generer un binaire lisible par gdb.
+
+Si on utilise la commande "file" sur kernel.elf, on voit que linux reconnait ce fichier comme un executable.
+
+19 janvier
+Passons à l'analyse du code.
+Tout d'abord nous avons startup.s, qui sera compiler plus tard en startup.o et linker à main.o grace au fichier kernel.ld pour generer kernel.elf.
+Ce dernier permet de booter sur notre carte. Ce dernier permet de changer l'emplacement memoire de demarrage si le code à executer se situe dans
+une zone proteger par exemple, grace au pointeur _start on peut obtenir une zone "safe" où travailler. Les pointeur _load et _start utilisés par startup.c sont
+d'ailleur defini par kernel.ld, qui dans notre cas les positionne en 0x10000, ce sera donc le point d'entré de notre programme.
+
+Le code principal.
+Il y a deux parties principal a comprendre : l'algorithme principal et la serial line qui permet la lecture et l'impression de caracteres.
+L'algorithme principal consiste à :
+- Attendre une entré dans l'entrée standart grace à la fonction "uart_receive"
+- Afficher le caractere reçu, si on en à reçu un, sinon ne rien faire.
+- Si on reçois "\n" on renvoie "\r\n" pour permettre un retour à la ligne propre.
+
+Maintenant pour ce qui est des fonction uart_receive et uart_send, le concept est que qemu nous donne acces à ces controlleur à certaine adresse (UART_0 par exemple).
+Nous avons acces à deux octets : celui de data et celui de flag. Nous pouvons lire et ecrire dans clui de data pour recevoir/envoyer de l'information,
+l'octet lu dans la zone flag permet lui de connaitre l'etat de la fifo materiellmeent parlant, c'est à dire par exemple si il y a de la donnée à lire par exemple.
+
+On constate que ce programme "monopolise" la ligne serie, c'est à dire qu'il va etre difficile de faire tourner un autre programme utilisant la ligne serie en même temps.
+Utilisé les solutions d'interruption permettrait de palier à ce probleme.
+D'ailleurs notons que l'envoie est bloquant car si la fifo est pleine nous attendons que le receveur (ici QEMU) consomme au moins un octet pour laisser une place dans
+la fifo pour ecrire notre nouvel octet. Ce n'est par contre pas le cas pour la lecture, cela evite que nous lisions par erreur alors qu'aucune donnée n'ait été envoyé, nous
+recevrions dans ce cas là une donnée non spécifiée.
+
+
+
+

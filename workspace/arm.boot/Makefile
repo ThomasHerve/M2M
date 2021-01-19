@@ -13,8 +13,8 @@ MACHINE=versatileab
 MEMORY=32M
 
 # Notice that we link with our own linker script: test.ld
-all: startup.o main.o 
-	$(TOOLCHAIN)-ld $(LDFLAGS) startup.o main.o -o kernel.elf
+all: startup.o main.o kprintf.o
+	$(TOOLCHAIN)-ld $(LDFLAGS) startup.o main.o kprintf.o -o kernel.elf
 	$(TOOLCHAIN)-objcopy -O binary kernel.elf kernel.bin
 
 clean: 
@@ -25,6 +25,9 @@ startup.o: startup.s
 
 main.o: main.c
 	$(TOOLCHAIN)-gcc $(CFLAGS) main.c -o main.o
+
+kprintf.o: kprintf.c kprintf.h
+	$(TOOLCHAIN)-gcc $(CFLAGS) kprintf.c -o kprintf.o
 
 run: all
 	$(QEMU) -M $(MACHINE) -m $(MEMORY) -nographic -kernel kernel.bin -serial mon:stdio
