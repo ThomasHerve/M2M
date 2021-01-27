@@ -25,6 +25,10 @@ SECTIONS
    */
  .startup . : { startup.o(.text) }
  /*
+  * Include exception handler
+  */
+ .exception . : { exception.o(.text) }
+ /*
   * Now include the other sections of code.
   */
  .text : { *(.text) }
@@ -65,4 +69,7 @@ SECTIONS
  . = ALIGN(8);
  . = . + 0x1000; /* 4kB of stack memory */
  stack_top = .;
+ . = ALIGN(8);
+ . = . + 0x1000; /* 4kB of stack memory */
+ irq_stack_top = .;
 }

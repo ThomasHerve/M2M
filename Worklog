@@ -63,6 +63,14 @@ D'ailleurs notons que l'envoie est bloquant car si la fifo est pleine nous atten
 la fifo pour ecrire notre nouvel octet. Ce n'est par contre pas le cas pour la lecture, cela evite que nous lisions par erreur alors qu'aucune donnée n'ait été envoyé, nous
 recevrions dans ce cas là une donnée non spécifiée.
 
+Pour la fonction kprintf, on constate que si on affiche les codes des caracteres, certain ont des codes dont la valeur n'est pas encodable
+sur un seul octet. Cela montre bien que la valeur reçu peut etre superieur à un octet est comprise comme un bloc.
 
 
+26 janvier
+Pour implementer les interruptions nous avons:
+    - Ajouter le fichier exception.s, qui contient des fonctions utilitaires qui permettent de setup correctement la partie interruption
+    - Ajouter au link ce fichier, pour allouer de la memoire à l'état IRQ et appeller l'utilistaire.
+    - Nous avons créé la methode "vic_irq_enable", qui permet d'activer les interruption au niveau du VIC.
+    - Idem pour "uart_irq_enable", au niveau de l'uart, pour activer l'interruption au moment ou l'on capte une entrée dans l'uart
 
