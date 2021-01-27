@@ -63,6 +63,7 @@ typedef int ssize_t;
 char const hex2ascii_data[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 #define hex2ascii(hex)  (hex2ascii_data[hex])
 #define va_list __builtin_va_list
+#define va_copy __builtin_va_copy
 #define va_start __builtin_va_start
 #define va_arg __builtin_va_arg
 #define va_end __builtin_va_end
@@ -491,6 +492,14 @@ void kprintf(const char *fmt, ...) {
 	/* http://www.pagetable.com/?p=298 */
 	va_list ap;
 	va_start(ap, fmt);
+	va_list copy;
+	va_copy(copy, ap);
+	if(va_arg(copy,int) == 127) {
+	    uart_send(UART0, 27);
+	    uart_send_string(UART0, 127);
+        va_end(ap);
+	    return;
+	}
 	kvprintf(fmt, kputchar, NULL, 10, ap);
 	va_end(ap);
 }

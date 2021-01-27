@@ -74,3 +74,8 @@ Pour implementer les interruptions nous avons:
     - Nous avons créé la methode "vic_irq_enable", qui permet d'activer les interruption au niveau du VIC.
     - Idem pour "uart_irq_enable", au niveau de l'uart, pour activer l'interruption au moment ou l'on capte une entrée dans l'uart
 
+27 janvier
+Nous avons reussi à implementer correctement les interruptions. Pour cela nous avons tout d'abord trouvé les bonnes adresses à modifier pour acitver l'UART et le VIC.
+Ces dernieres sont dans uart.h (UART_IMSC pour l'uart et PICIntEnable pour le vic). Il faut appliquer les bons mask, UART_RXRIS pour dire à l'uart de lever une exception
+lorsqu'une entrée est detecté, et UART0_IRQ_MASK pour demander au VIC de reagir aux exceptions lever par l'uart.
+Ensuite il suffit de rajouter notre handler, ce dernier ecris les entrées lu dans un buffer circulaire, reveille le main qui consomme le buffer et se rendore.
