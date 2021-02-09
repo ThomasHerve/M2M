@@ -1,0 +1,103 @@
+12 janvier
+- Installation de Qemu sur mon debian
+- Mise en place du git
+- Installation avec les commandes suivantes:
+    - sudo apt-get install gcc-arm-none-eabi gdb-arm-none-eabi binutils-arm-none-eabi
+    - sudo apt-get install qemu-system-arm qemu-system-x86
+
+Qemu est un simulateur de machine, qui permet de choisir une distribution (intel, ARM, etc... ici on choisi ARM).
+Le makefile fourni permet de compiler un .elf qui tournera sur la distribution.
+
+
+Connection à GDB:
+    - On ouvre une session avec qemu qui permet d'interpreter le programme en .elf
+    - On ouvre une session gdb, qemu ouvre un port (1234) quand compiler avec l'option "debug" decrite dans le makefile
+    - On peut donc via gdb se connecter et avoir acces à toute la memoire ! (et ça c'est cool).
+    On utilise la commande "target remote localhost:1234" une fois dans gdb pour se connecter
+
+Le makefile:
+Ce dernier permet de compiler et d'executer notre projet. On constate qu'il y a deux mots clé en en tete importants:
+    - TOOLCHAIN : Ici "arm-none-eabi", c'est simplement un outils de compilation, comme gcc. Il permet de compiler specifiquement pour ARM
+    - QEMU: Ici "qemu-system-arm", c'est l'executable qemu, utilisant l'architecture ARM.
+On voit qu'il faut aussi choisir une machine, ici versatileab et versatilepb, ces dernieres sont les instances qemu que nous avons choisi d'utiliser,
+Celle ci en particulier pour leurs simplicité d'utilisation.
+
+On constate qu'on utilise un "linker script" durant le compilation. Ce dernier permet de pre-definir des valeurs à certaines adresses pour
+permettre une execution correct (comme donner un point d'entré convenable, sinon l'execution crasherais instantannement, definir la taille de la pile, etc...)
+Il permet aussi de placer startup.s en haut pour qu'il soit executer en premier, ce dernier permet d'initialiser notre code dans main.
+
+Lors du run, le code de notre kernel, à ce moment donné present sous la forme "kernel.elf" doit etre converti en .bin, c'est à dire en binaire lisible par qemu.
+Pour permettre le debug nous compilons (lors de la compilation en mode debug) avec l'option -gdb, et evidemment nous ouvrons un port pour permettre à gdb de se connecter.
+
+On remarque que le code n'utilise pas "printf", pour la simple raison que l'on n'utilise pas de librairie standard. Toute action doit donc être redevelopper,
+Comme écrire sur la sortie standard par exemple. Dans notre cas la processeur possede une fifo dans laquelle nous pouvons ecrire, le processeur l'utilise
+pour afficher les caracteres passés dedans.
+
+On possede un fichier "kernel.elf". Ce dernier est un fichier qui permet d'obtenir un binaire. Ce dernier est unique, mais tout son interet est qu'il
+condense tout les .o, en definissant les espaces memoires et les liens. En donnant l'option -gdb, cela permet d'utiliser le .elf
+pour generer un binaire lisible par gdb.
+
+Si on utilise la commande "file" sur kernel.elf, on voit que linux reconnait ce fichier comme un executable.
+
+19 janvier
+Passons à l'analyse du code.
+Tout d'abord nous avons startup.s, qui sera compiler plus tard en startup.o et linker à main.o grace au fichier kernel.ld pour generer kernel.elf.
+Ce dernier permet de booter sur notre carte. Ce dernier permet de changer l'emplacement memoire de demarrage si le code à executer se situe dans
+une zone proteger par exemple, grace au pointeur _start on peut obtenir une zone "safe" où travailler. Les pointeur _load et _start utilisés par startup.c sont
+d'ailleur defini par kernel.ld, qui dans notre cas les positionne en 0x10000, ce sera donc le point d'entré de notre programme.
+
+Le code principal.
+Il y a deux parties principal a comprendre : l'algorithme principal et la serial line qui permet la lecture et l'impression de caracteres.
+L'algorithme principal consiste à :
+- Attendre une entré dans l'entrée standart grace à la fonction "uart_receive"
+- Afficher le caractere reçu, si on en à reçu un, sinon ne rien faire.
+- Si on reçois "\n" on renvoie "\r\n" pour permettre un retour à la ligne propre.
+
+Maintenant pour ce qui est des fonction uart_receive et uart_send, le concept est que qemu nous donne acces à ces controlleur à certaine adresse (UART_0 par exemple).
+Nous avons acces à deux octets : celui de data et celui de flag. Nous pouvons lire et ecrire dans clui de data pour recevoir/envoyer de l'information,
+l'octet lu dans la zone flag permet lui de connaitre l'etat de la fifo materiellmeent parlant, c'est à dire par exemple si il y a de la donnée à lire par exemple.
+
+On constate que ce programme "monopolise" la ligne serie, c'est à dire qu'il va etre difficile de faire tourner un autre programme utilisant la ligne serie en même temps.
+Utilisé les solutions d'interruption permettrait de palier à ce probleme.
+D'ailleurs notons que l'envoie est bloquant car si la fifo est pleine nous attendons que le receveur (ici QEMU) consomme au moins un octet pour laisser une place dans
+la fifo pour ecrire notre nouvel octet. Ce n'est par contre pas le cas pour la lecture, cela evite que nous lisions par erreur alors qu'aucune donnée n'ait été envoyé, nous
+recevrions dans ce cas là une donnée non spécifiée.
+
+Pour la fonction kprintf, on constate que si on affiche les codes des caracteres, certain ont des codes dont la valeur n'est pas encodable
+sur un seul octet. Cela montre bien que la valeur reçu peut etre superieur à un octet est comprise comme un bloc.
+
+
+26 janvier
+Pour implementer les interruptions nous avons:
+    - Ajouter le fichier exception.s, qui contient des fonctions utilitaires qui permettent de setup correctement la partie interruption
+    - Ajouter au link ce fichier, pour allouer de la memoire à l'état IRQ et appeller l'utilistaire.
+    - Nous avons créé la methode "vic_irq_enable", qui permet d'activer les interruption au niveau du VIC.
+    - Idem pour "uart_irq_enable", au niveau de l'uart, pour activer l'interruption au moment ou l'on capte une entrée dans l'uart
+
+27 janvier
+Nous avons reussi à implementer correctement les interruptions. Pour cela nous avons tout d'abord trouvé les bonnes adresses à modifier pour acitver l'UART et le VIC.
+Ces dernieres sont dans uart.h (UART_IMSC pour l'uart et PICIntEnable pour le vic). Il faut appliquer les bons mask, UART_RXRIS pour dire à l'uart de lever une exception
+lorsqu'une entrée est detecté, et UART0_IRQ_MASK pour demander au VIC de reagir aux exceptions lever par l'uart.
+Ensuite il suffit de rajouter notre handler, ce dernier ecris les entrées lu dans un buffer circulaire, reveille le main qui consomme le buffer et se rendore.
+
+
+2 fevrier 2021
+Nous avons installé toute les librairies necessaire a la compilation de notre mini distribution et au lancement de grub.
+Nous avons compris que l'installation et le lancement de notre distribution suis les etapes suivantes :
+    - Compiler les fichiers de notre distribution
+    - Créé l'image disque
+    - Partitionner et monter l'image disque
+    - Finalemment installer grub sur le disque
+Qemu peux booter sur grub.
+
+Compilation: On constate que le fichier executable est extremement lourd, cela est du au fait que toutes les librairies externes sont incluses avec directement.
+Le initrd est en réalité le systeme de fichier qui va être lu par le boot loader et donné au noyau. On constate que grub (le noyau) prend un chmein dans le initrd pour
+trouver l'executable d'entrée (ici hello).
+
+En ajoutant les bonnes librairies dans MiniDist, Il est possible de compiler hello dynamiquement, il retrouvera bien les librairires en dessous de /lib.
+Si l'on veux un shell, il suffit de passer un executable qui redirige vers l'executable "busybox", qui nous ouvrira un shell.
+Dans notre cas on passe /bin/sh qui est le chemin standart, et le /sh deviens un lien symbolique vers busybox.
+
+Pour pouvoir rajouter de nouvelles commandes, nous avons besoin de la commande mount (on ajoute donc l'executable en dessous de /bin),
+On rajoute un dossier /proc, qui permettra au systeme de monter toute les commandes qui nous manque. On rajoute ensuite
+des liens symboliques vers les commandes qui nous interresses, et finalement on y a acces dans notre shell.

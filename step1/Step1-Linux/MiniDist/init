@@ -1,0 +1,10 @@
+#!/bin/sh
+echo "Remounting /dev/root in rw mode"
+mount -t proc none /proc
+mount -o rw,remount /dev/root
+echo "\n\nWelcome!\n"
+LINKS="echo sleep ls mkdir rmdir rm mv cp cat more dmesg mknod"
+for link in $LINKS ; do
+ [ ! -e /bin/$link ] && ln -s /bin/busybox /bin/$link
+done
+exec /bin/sh +m
